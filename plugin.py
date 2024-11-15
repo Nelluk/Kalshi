@@ -43,7 +43,7 @@ class Kalshi(callbacks.Plugin):
             
             # Build single output message
             parts = []
-            parts.append(f"{ircutils.bold(series_title)} {event_subtitle} | {event_title}")
+            parts.append(f"{ircutils.bold(series_title)} {event_subtitle} |hi {event_title}")
             
             # Get markets and sort by yes_bid price
             if top_series.get('markets'):
