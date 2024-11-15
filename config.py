@@ -5,8 +5,8 @@ def configure(advanced):
     from supybot.questions import expect, anything, something, yn
     conf.registerPlugin('Kalshi', True)
 
-class KalshiConfig(conf.registryValue):
+class KalshiConfig(registry.Group):
     """Configuration for the Kalshi plugin."""
     pass
 
-conf.registerPlugin('Kalshi', KalshiConfig)
+Kalshi = conf.registerPlugin('Kalshi')
