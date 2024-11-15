@@ -18,11 +18,17 @@ __contributors__ = {}
 # This is a url where the most recent plugin package can be downloaded.
 __url__ = ''
 
+# Load our configuration
 from . import config
+
+# Load our plugin class
 from . import plugin
 
 if world.testing:
     from . import test
 
-Class = plugin.Class
+# This is the entry point for the plugin
+Class = plugin.Kalshi
+
+# This is used by the setup.py script
 configure = config.configure

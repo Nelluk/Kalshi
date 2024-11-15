@@ -4,11 +4,13 @@ import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.world as world
-import requests
 
 class Kalshi(callbacks.Plugin):
     """Kalshi Prediction Market IRC Bot Plugin"""
     threaded = True  # Make network calls in a separate thread
+    
+    def __init__(self, irc):
+        super().__init__(irc)
     
     def kalshi(self, irc, msg, args, query_string):
         """<query>
@@ -17,8 +19,7 @@ class Kalshi(callbacks.Plugin):
         Example: kalshi house seats
         """
         try:
-            # TEST MESSAGE - REMOVE THIS AFTER CONFIRMING
-            irc.reply("TEST PREFIX - " + query_string)
+            import requests  # Import here to allow for better reloading
             
             url = "https://api.elections.kalshi.com/v1/search/series"
             params = {
@@ -44,8 +45,11 @@ class Kalshi(callbacks.Plugin):
             event_title = top_series['event_title']
             event_subtitle = top_series['event_subtitle']
             
-            header = f"TESTING NEW FORMAT >>> {ircutils.bold(series_title)} {event_subtitle} | {event_title}"
-            irc.reply(header)
+            # Build output parts
+            output_parts = []
+            
+            # Add header
+            output_parts.append(f"{ircutils.bold(series_title)} {event_subtitle} | {event_title}")
             
             # Get markets and sort by yes_bid price
             if top_series.get('markets'):
@@ -54,7 +58,8 @@ class Kalshi(callbacks.Plugin):
                 active_markets = [m for m in markets if m.get('yes_bid', 0) > 0]
                 sorted_markets = sorted(active_markets, key=lambda x: x.get('yes_bid', 0), reverse=True)
                 
-                # Show up to 8 markets with active prices
+                # Format market outcomes
+                market_parts = []
                 for market in sorted_markets[:8]:
                     subtitle = market.get('yes_subtitle', 'No subtitle')
                     current_price = market.get('yes_bid', 'N/A')
@@ -68,13 +73,18 @@ class Kalshi(callbacks.Plugin):
                     else:
                         delta_str = f"±{price_delta}¢"
                     
-                    market_msg = f"XXX {subtitle}: {current_price}¢ ({delta_str})"
-                    irc.reply(market_msg)
+                    market_parts.append(f"{subtitle}: {current_price}¢ ({delta_str})")
                 
-                # If there are more markets with non-zero prices, show a count
+                if market_parts:
+                    output_parts.append(" | ".join(market_parts))
+                
+                # If there are more markets with non-zero prices, add count
                 remaining = len([m for m in markets if m.get('yes_bid', 0) > 0]) - 8
                 if remaining > 0:
-                    irc.reply(f"TESTING... and {remaining} more outcomes with non-zero prices")
+                    output_parts.append(f"(+{remaining} more)")
+            
+            # Send single combined message
+            irc.reply(" | ".join(output_parts))
             
         except requests.RequestException as e:
             irc.reply(f"Error fetching data: {str(e)}")
@@ -82,6 +92,5 @@ class Kalshi(callbacks.Plugin):
             irc.reply(f"Error: {str(e)}")
     
     kalshi = wrap(kalshi, ['text'])
-
 
 Class = Kalshi
