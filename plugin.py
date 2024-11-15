@@ -41,7 +41,9 @@ class Kalshi(callbacks.Plugin):
             event_title = top_series['event_title']
             event_subtitle = top_series['event_subtitle']
             
-            output_parts = [f"{ircutils.bold(series_title)} {event_subtitle} | {event_title}"]
+            # Build single output message
+            parts = []
+            parts.append(f"{ircutils.bold(series_title)} {event_subtitle} | {event_title}")
             
             # Get markets and sort by yes_bid price
             if top_series.get('markets'):
@@ -51,7 +53,7 @@ class Kalshi(callbacks.Plugin):
                 sorted_markets = sorted(active_markets, key=lambda x: x.get('yes_bid', 0), reverse=True)
                 
                 # Format market outcomes
-                market_parts = []
+                market_strs = []
                 for market in sorted_markets[:8]:
                     subtitle = market.get('yes_subtitle', 'No subtitle')
                     current_price = market.get('yes_bid', 'N/A')
@@ -65,19 +67,18 @@ class Kalshi(callbacks.Plugin):
                     else:
                         delta_str = f"±{price_delta}¢"
                     
-                    market_parts.append(f"{subtitle}: {current_price}¢ ({delta_str})")
+                    market_strs.append(f"{subtitle}: {current_price}¢ ({delta_str})")
                 
-                # Add market outcomes to output
-                if market_parts:
-                    output_parts.append(" | ".join(market_parts))
+                if market_strs:
+                    parts.append(" | ".join(market_strs))
                 
                 # If there are more markets with non-zero prices, add count
                 remaining = len([m for m in markets if m.get('yes_bid', 0) > 0]) - 8
                 if remaining > 0:
-                    output_parts.append(f"(+{remaining} more)")
+                    parts.append(f"(+{remaining} more)")
             
             # Send single combined message
-            irc.reply(" | ".join(output_parts))
+            irc.reply(" | ".join(parts))
             
         except requests.RequestException as e:
             irc.reply(f"Error fetching data: {str(e)}")
