@@ -17,6 +17,9 @@ class Kalshi(callbacks.Plugin):
         Example: kalshi house seats
         """
         try:
+            # TEST MESSAGE - REMOVE THIS AFTER CONFIRMING
+            irc.reply("TEST PREFIX - " + query_string)
+            
             url = "https://api.elections.kalshi.com/v1/search/series"
             params = {
                 "query": query_string,
@@ -41,9 +44,8 @@ class Kalshi(callbacks.Plugin):
             event_title = top_series['event_title']
             event_subtitle = top_series['event_subtitle']
             
-            # Build single output message
-            parts = []
-            parts.append(f"{ircutils.bold(series_title)} {event_subtitle} |hi {event_title}")
+            header = f"TESTING NEW FORMAT >>> {ircutils.bold(series_title)} {event_subtitle} | {event_title}"
+            irc.reply(header)
             
             # Get markets and sort by yes_bid price
             if top_series.get('markets'):
@@ -52,8 +54,7 @@ class Kalshi(callbacks.Plugin):
                 active_markets = [m for m in markets if m.get('yes_bid', 0) > 0]
                 sorted_markets = sorted(active_markets, key=lambda x: x.get('yes_bid', 0), reverse=True)
                 
-                # Format market outcomes
-                market_strs = []
+                # Show up to 8 markets with active prices
                 for market in sorted_markets[:8]:
                     subtitle = market.get('yes_subtitle', 'No subtitle')
                     current_price = market.get('yes_bid', 'N/A')
@@ -67,18 +68,13 @@ class Kalshi(callbacks.Plugin):
                     else:
                         delta_str = f"±{price_delta}¢"
                     
-                    market_strs.append(f"{subtitle}: {current_price}¢ ({delta_str})")
+                    market_msg = f"XXX {subtitle}: {current_price}¢ ({delta_str})"
+                    irc.reply(market_msg)
                 
-                if market_strs:
-                    parts.append(" | ".join(market_strs))
-                
-                # If there are more markets with non-zero prices, add count
+                # If there are more markets with non-zero prices, show a count
                 remaining = len([m for m in markets if m.get('yes_bid', 0) > 0]) - 8
                 if remaining > 0:
-                    parts.append(f"(+{remaining} more)")
-            
-            # Send single combined message
-            irc.reply(" | ".join(parts))
+                    irc.reply(f"TESTING... and {remaining} more outcomes with non-zero prices")
             
         except requests.RequestException as e:
             irc.reply(f"Error fetching data: {str(e)}")
