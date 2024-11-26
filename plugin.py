@@ -5,6 +5,8 @@ import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.world as world
 import supybot.log as log
+from datetime import datetime
+import pytz
 
 class Kalshi(callbacks.Plugin):
     """Kalshi Prediction Market IRC Bot Plugin"""
@@ -40,19 +42,49 @@ class Kalshi(callbacks.Plugin):
                 "fuzzy_threshold": 4
             }
             
+            log.debug('Kalshi: Making API request to %s with params: %r', url, params)
             response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
+            
+            if response.status_code != 200:
+                log.error('Kalshi: API request failed with status %d: %s', response.status_code, response.text)
+                irc.reply(f"Error fetching data: API returned status {response.status_code}")
+                return
+                
+            try:
+                data = response.json()
+            except ValueError as e:
+                log.error('Kalshi: Failed to parse API response as JSON: %s. Response text: %s', str(e), response.text)
+                irc.reply("Error: Invalid response from API")
+                return
             
             if not data or 'current_page' not in data or not data['current_page']:
                 irc.reply("No results found.")
                 return
             
-            # Get the top result
-            top_series = data['current_page'][0]
+            # Find the first open series
+            now = datetime.now(pytz.UTC)
+            
+            open_series = None
+            for series in data['current_page']:
+                # Check if any market in the series is currently open
+                if series.get('markets'):
+                    for market in series['markets']:
+                        open_time = datetime.strptime(market['open_ts'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.UTC)
+                        if open_time <= now:
+                            open_series = series
+                            break
+                    if open_series:
+                        break
+            
+            if not open_series:
+                irc.reply("No currently open markets found.")
+                return
+            
+            # Use the open series for display
+            top_series = open_series
             
             # Debug log the API response
-            log.debug('Kalshi: Full API response for top series: %r', top_series)
+            log.debug('Kalshi: Full API response for selected series: %r', top_series)
             log.debug('Kalshi: Series keys available: %s', ', '.join(top_series.keys()))
             if top_series.get('markets'):
                 log.debug('Kalshi: First market keys available: %s', ', '.join(top_series['markets'][0].keys()))
@@ -100,9 +132,11 @@ class Kalshi(callbacks.Plugin):
                 if remaining > 0:
                     output_parts.append(f"(+{remaining} more)")
             
-            # Add shortened URL
-            market_url = f"https://kalshi.com/markets/{top_series.get('event_ticker', '')}"
+            # Add shortened URL using series_ticker
+            market_url = f"https://kalshi.com/markets/{top_series.get('series_ticker', '')}"
+            log.debug('Kalshi: Constructing URL: %s', market_url)
             short_url = self._shorten_url(market_url)
+            log.debug('Kalshi: Shortened URL: %s', short_url)
             output_parts.append(short_url)
             
             # Send single combined message
