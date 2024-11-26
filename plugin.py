@@ -51,6 +51,12 @@ class Kalshi(callbacks.Plugin):
             # Get the top result
             top_series = data['current_page'][0]
             
+            # Debug log the API response
+            log.debug('Kalshi: Full API response for top series: %r', top_series)
+            log.debug('Kalshi: Series keys available: %s', ', '.join(top_series.keys()))
+            if top_series.get('markets'):
+                log.debug('Kalshi: First market keys available: %s', ', '.join(top_series['markets'][0].keys()))
+            
             # Format header with series information
             series_title = top_series['series_title']
             event_title = top_series['event_title']
@@ -95,7 +101,7 @@ class Kalshi(callbacks.Plugin):
                     output_parts.append(f"(+{remaining} more)")
             
             # Add shortened URL
-            market_url = f"https://kalshi.com/markets/{top_series.get('ticker', '')}"
+            market_url = f"https://kalshi.com/markets/{top_series.get('event_ticker', '')}"
             short_url = self._shorten_url(market_url)
             output_parts.append(short_url)
             
