@@ -4,6 +4,7 @@ import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import supybot.world as world
+import supybot.log as log
 
 class Kalshi(callbacks.Plugin):
     """Kalshi Prediction Market IRC Bot Plugin"""
@@ -11,6 +12,16 @@ class Kalshi(callbacks.Plugin):
     
     def __init__(self, irc):
         super().__init__(irc)
+    
+    def _shorten_url(self, url):
+        """Helper method to shorten URL using TinyURL service"""
+        try:
+            import pyshorteners
+            shortener = pyshorteners.Shortener()
+            return shortener.tinyurl.short(url)
+        except Exception as e:
+            log.error('Kalshi: Failed to shorten URL: %s', str(e))
+            return url
     
     def kalshi(self, irc, msg, args, query_string):
         """<query>
@@ -82,6 +93,11 @@ class Kalshi(callbacks.Plugin):
                 remaining = len([m for m in markets if m.get('yes_bid', 0) > 0]) - 8
                 if remaining > 0:
                     output_parts.append(f"(+{remaining} more)")
+            
+            # Add shortened URL
+            market_url = f"https://kalshi.com/markets/{top_series.get('ticker', '')}"
+            short_url = self._shorten_url(market_url)
+            output_parts.append(short_url)
             
             # Send single combined message
             irc.reply(" | ".join(output_parts))
